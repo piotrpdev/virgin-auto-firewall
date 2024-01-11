@@ -45,3 +45,9 @@ with the [NO-IP DUC](https://www.noip.com/support/knowledgebase/automatic-ipv6-u
 > [!WARNING]
 > This software was specifically designed and only works with the Virgin
 > Media Hub 6 router (`F3896LG-VMIE` by *Sagemcom*).
+
+## Usage
+
+```bash
+go run .\main.go -routerPassword=abcde -previousIPv6=aaaa:bbbb:cccc:dddd:aaaa:bbbb:cccc:dddd
+```
