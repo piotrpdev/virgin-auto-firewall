@@ -48,6 +48,15 @@ with the [NO-IP DUC](https://www.noip.com/support/knowledgebase/automatic-ipv6-u
 
 ## Usage
 
+I recommend the following:
+
 ```bash
-go run .\main.go -routerPassword=abcde -oldIP=aaaa:bbbb:cccc:dddd:aaaa:bbbb:cccc:dddd
+sudo docker run -d \
+-v /var/log:/tmp \
+--net=host \
+piotrpdev/virgin-auto-firewall:1.0.0-rspi \
+-logPath=/tmp/vaf.log \
+-routerPassword=abcde \
+-debug=true \
+-oldIP=aaaa:bbbb:cccc:dddd:aaaa:bbbb:cccc:dddd
 ```
