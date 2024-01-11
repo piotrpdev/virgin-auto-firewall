@@ -49,5 +49,5 @@ with the [NO-IP DUC](https://www.noip.com/support/knowledgebase/automatic-ipv6-u
 ## Usage
 
 ```bash
-go run .\main.go -routerPassword=abcde -previousIPv6=aaaa:bbbb:cccc:dddd:aaaa:bbbb:cccc:dddd
+go run .\main.go -routerPassword=abcde -oldIP=aaaa:bbbb:cccc:dddd:aaaa:bbbb:cccc:dddd
 ```

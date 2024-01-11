@@ -99,259 +99,28 @@ func setupLogger(filePath string, debugMode bool) (*os.File, error) {
 	return f1, nil
 }
 
-func getIPv6(httpClient http.Client, url string) (string, error) {
+func httpDo(httpClient http.Client, method string, url string, bearerToken string, payload *bytes.Buffer, httpStatus int, responseStruct interface{}) error {
 	slog.Debug("Creating request")
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return "", fmt.Errorf("error creating request: %w", err)
+
+	var req *http.Request
+	var err error
+
+	if payload != nil {
+		req, err = http.NewRequest(method, url, payload)
+	} else {
+		req, err = http.NewRequest(method, url, nil)
 	}
 
-	slog.Debug("Sending request")
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("error sending request: %w", err)
-	}
-
-	if resp.Body == nil {
-		return "", fmt.Errorf("response body is nil")
-	}
-
-	defer resp.Body.Close()
-
-	slog.Debug("Reading response body")
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("error reading response body: %w", err)
-	}
-
-	slog.Debug("Response body", slog.String("url", url), slog.String("body", string(body)))
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("response status is not correct (expected 200): %d", resp.StatusCode)
-	}
-
-	slog.Debug("Unmarshalling response body")
-	ipifyResponse1 := ipifyResponse{}
-	jsonErr := json.Unmarshal(body, &ipifyResponse1)
-	if jsonErr != nil {
-		return "", fmt.Errorf("error unmarshalling response body: %w", jsonErr)
-	}
-
-	if ipifyResponse1.IPv6 == nil {
-		return "", fmt.Errorf("response body does not contain IP field")
-	}
-
-	// ! Extremely basic check for IPv6
-	// ? Sometimes ipify returns IPv4
-	if !strings.Contains(*ipifyResponse1.IPv6, ":") {
-		return "", fmt.Errorf("IP is not IPv6")
-	}
-
-	return *ipifyResponse1.IPv6, nil
-}
-
-func login(httpClient http.Client, url string, routerPassword string) (string, string, error) {
-	var jsonData = []byte(fmt.Sprintf(`{"password": "%s"}`, routerPassword))
-
-	slog.Debug("Creating request")
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", "", fmt.Errorf("error creating request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	slog.Debug("Sending request")
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return "", "", fmt.Errorf("error sending request: %w", err)
-	}
-
-	if resp.Body == nil {
-		return "", "", fmt.Errorf("response body is nil")
-	}
-
-	defer resp.Body.Close()
-
-	slog.Debug("Reading response body")
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", "", fmt.Errorf("error reading response body: %w", err)
-	}
-
-	slog.Debug("Response body", slog.String("url", url), slog.String("body", string(body)))
-
-	if resp.StatusCode != http.StatusCreated {
-		return "", "", fmt.Errorf("response status is not correct (expected 201): %d", resp.StatusCode)
-	}
-
-	slog.Debug("Unmarshalling response body")
-	loginResponse1 := loginResponse{}
-	jsonErr := json.Unmarshal(body, &loginResponse1)
-	if jsonErr != nil {
-		return "", "", fmt.Errorf("error unmarshalling response body: %w", jsonErr)
-	}
-
-	if loginResponse1.Created.BearerToken == nil {
-		return "", "", fmt.Errorf("response body does not contain token field")
-	}
-
-	if loginResponse1.Created.UserID == nil {
-		return "", "", fmt.Errorf("response body does not contain userId field")
-	}
-
-	return fmt.Sprintf("%d", *loginResponse1.Created.UserID), *loginResponse1.Created.BearerToken, nil
-}
-
-func getConnectedDevices(httpClient http.Client, url string, bearerToken string) (devicesResponse, error) {
-	slog.Debug("Creating request")
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return devicesResponse{}, fmt.Errorf("error creating request: %w", err)
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerToken))
-
-	slog.Debug("Sending request")
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return devicesResponse{}, fmt.Errorf("error sending request: %w", err)
-	}
-
-	if resp.Body == nil {
-		return devicesResponse{}, fmt.Errorf("response body is nil")
-	}
-
-	defer resp.Body.Close()
-
-	slog.Debug("Reading response body")
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return devicesResponse{}, fmt.Errorf("error reading response body: %w", err)
-	}
-
-	slog.Debug("Response body", slog.String("url", url), slog.String("body", string(body)))
-
-	if resp.StatusCode != http.StatusOK {
-		return devicesResponse{}, fmt.Errorf("response status is not correct (expected 200): %d", resp.StatusCode)
-	}
-
-	slog.Debug("Unmarshalling response body")
-	devicesResponse1 := devicesResponse{}
-	jsonErr := json.Unmarshal(body, &devicesResponse1)
-	if jsonErr != nil {
-		return devicesResponse{}, fmt.Errorf("error unmarshalling response body: %w", jsonErr)
-	}
-
-	if devicesResponse1.Hosts.Hosts == nil {
-		return devicesResponse{}, fmt.Errorf("response body does not contain hosts field")
-	}
-
-	return devicesResponse1, nil
-}
-
-func getNetworkIPv6Info(httpClient http.Client, url string, bearerToken string) (ipv6InfoResponse, error) {
-	slog.Debug("Creating request")
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return ipv6InfoResponse{}, fmt.Errorf("error creating request: %w", err)
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerToken))
-
-	slog.Debug("Sending request")
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return ipv6InfoResponse{}, fmt.Errorf("error sending request: %w", err)
-	}
-
-	if resp.Body == nil {
-		return ipv6InfoResponse{}, fmt.Errorf("response body is nil")
-	}
-
-	defer resp.Body.Close()
-
-	slog.Debug("Reading response body")
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return ipv6InfoResponse{}, fmt.Errorf("error reading response body: %w", err)
-	}
-
-	slog.Debug("Response body", slog.String("url", url), slog.String("body", string(body)))
-
-	if resp.StatusCode != http.StatusOK {
-		return ipv6InfoResponse{}, fmt.Errorf("response status is not correct (expected 200): %d", resp.StatusCode)
-	}
-
-	slog.Debug("Unmarshalling response body")
-	ipv6InfoResponse1 := ipv6InfoResponse{}
-	jsonErr := json.Unmarshal(body, &ipv6InfoResponse1)
-	if jsonErr != nil {
-		return ipv6InfoResponse{}, fmt.Errorf("error unmarshalling response body: %w", jsonErr)
-	}
-
-	if ipv6InfoResponse1.Info.LanNetworkPrefixAddress == nil {
-		return ipv6InfoResponse{}, fmt.Errorf("response body does not contain LanNetworkPrefixAddress field")
-	}
-
-	return ipv6InfoResponse1, nil
-}
-
-func getPortFilters(httpClient http.Client, url string, bearerToken string) (filtersResponse, error) {
-	slog.Debug("Creating request")
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return filtersResponse{}, fmt.Errorf("error creating request: %w", err)
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerToken))
-
-	slog.Debug("Sending request")
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return filtersResponse{}, fmt.Errorf("error sending request: %w", err)
-	}
-
-	if resp.Body == nil {
-		return filtersResponse{}, fmt.Errorf("response body is nil")
-	}
-
-	defer resp.Body.Close()
-
-	slog.Debug("Reading response body")
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return filtersResponse{}, fmt.Errorf("error reading response body: %w", err)
-	}
-
-	slog.Debug("Response body", slog.String("url", url), slog.String("body", string(body)))
-
-	if resp.StatusCode != http.StatusOK {
-		return filtersResponse{}, fmt.Errorf("response status is not correct (expected 200): %d", resp.StatusCode)
-	}
-
-	slog.Debug("Unmarshalling response body")
-	filtersResponse1 := filtersResponse{}
-	jsonErr := json.Unmarshal(body, &filtersResponse1)
-	if jsonErr != nil {
-		return filtersResponse{}, fmt.Errorf("error unmarshalling response body: %w", jsonErr)
-	}
-
-	if filtersResponse1.Ipportfilters.Ipv6.Rules == nil {
-		return filtersResponse{}, fmt.Errorf("response body does not contain Ipv6.Rules field")
-	}
-
-	return filtersResponse1, nil
-}
-
-func deletePortFilter(httpClient http.Client, url string, bearerToken string) error {
-	slog.Debug("Creating request")
-	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerToken))
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if bearerToken != "" {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerToken))
+	}
 
 	slog.Debug("Sending request")
 	resp, err := httpClient.Do(req)
@@ -373,11 +142,104 @@ func deletePortFilter(httpClient http.Client, url string, bearerToken string) er
 
 	slog.Debug("Response body", slog.String("url", url), slog.String("body", string(body)))
 
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("response status is not correct (expected 204): %d", resp.StatusCode)
+	if resp.StatusCode != httpStatus {
+		return fmt.Errorf("response status is not correct (expected %d): %d", httpStatus, resp.StatusCode)
+	}
+
+	if responseStruct != nil {
+		slog.Debug("Unmarshalling response body")
+		if jsonErr := json.Unmarshal(body, responseStruct); jsonErr != nil {
+			return fmt.Errorf("error unmarshalling response body: %w", jsonErr)
+		}
 	}
 
 	return nil
+}
+
+func getIPv6(httpClient http.Client, url string) (string, error) {
+	ipifyResponse1 := ipifyResponse{}
+	httpDoErr := httpDo(httpClient, http.MethodGet, url, "", nil, http.StatusOK, &ipifyResponse1)
+	if httpDoErr != nil {
+		return "", httpDoErr
+	}
+
+	if ipifyResponse1.IPv6 == nil {
+		return "", fmt.Errorf("response body does not contain IP field")
+	}
+
+	// ! Extremely basic check for IPv6
+	// ? Sometimes ipify returns IPv4
+	if !strings.Contains(*ipifyResponse1.IPv6, ":") {
+		return "", fmt.Errorf("IP is not IPv6")
+	}
+
+	return *ipifyResponse1.IPv6, nil
+}
+
+func login(httpClient http.Client, url string, routerPassword string) (string, string, error) {
+	var jsonData = []byte(fmt.Sprintf(`{"password": "%s"}`, routerPassword))
+
+	loginResponse1 := loginResponse{}
+	httpDoErr := httpDo(httpClient, http.MethodPost, url, "", bytes.NewBuffer(jsonData), http.StatusCreated, &loginResponse1)
+	if httpDoErr != nil {
+		return "", "", httpDoErr
+	}
+
+	if loginResponse1.Created.BearerToken == nil {
+		return "", "", fmt.Errorf("response body does not contain token field")
+	}
+
+	if loginResponse1.Created.UserID == nil {
+		return "", "", fmt.Errorf("response body does not contain userId field")
+	}
+
+	return fmt.Sprintf("%d", *loginResponse1.Created.UserID), *loginResponse1.Created.BearerToken, nil
+}
+
+func getConnectedDevices(httpClient http.Client, url string, bearerToken string) (devicesResponse, error) {
+	devicesResponse1 := devicesResponse{}
+	httpDoErr := httpDo(httpClient, http.MethodGet, url, bearerToken, nil, http.StatusOK, &devicesResponse1)
+	if httpDoErr != nil {
+		return devicesResponse{}, httpDoErr
+	}
+
+	if devicesResponse1.Hosts.Hosts == nil {
+		return devicesResponse{}, fmt.Errorf("response body does not contain hosts field")
+	}
+
+	return devicesResponse1, nil
+}
+
+func getNetworkIPv6Info(httpClient http.Client, url string, bearerToken string) (ipv6InfoResponse, error) {
+	ipv6InfoResponse1 := ipv6InfoResponse{}
+	httpDoErr := httpDo(httpClient, http.MethodGet, url, bearerToken, nil, http.StatusOK, &ipv6InfoResponse1)
+	if httpDoErr != nil {
+		return ipv6InfoResponse{}, httpDoErr
+	}
+
+	if ipv6InfoResponse1.Info.LanNetworkPrefixAddress == nil {
+		return ipv6InfoResponse{}, fmt.Errorf("response body does not contain LanNetworkPrefixAddress field")
+	}
+
+	return ipv6InfoResponse1, nil
+}
+
+func getPortFilters(httpClient http.Client, url string, bearerToken string) (filtersResponse, error) {
+	filtersResponse1 := filtersResponse{}
+	httpDoErr := httpDo(httpClient, http.MethodGet, url, bearerToken, nil, http.StatusOK, &filtersResponse1)
+	if httpDoErr != nil {
+		return filtersResponse{}, httpDoErr
+	}
+
+	if filtersResponse1.Ipportfilters.Ipv6.Rules == nil {
+		return filtersResponse{}, fmt.Errorf("response body does not contain Ipv6.Rules field")
+	}
+
+	return filtersResponse1, nil
+}
+
+func deletePortFilter(httpClient http.Client, url string, bearerToken string) error {
+	return httpDo(httpClient, http.MethodDelete, url, bearerToken, nil, http.StatusNoContent, nil)
 }
 
 func addPortFilter(httpClient http.Client, url string, ipv6 string, bearerToken string) (addFilterResponse, error) {
@@ -398,44 +260,10 @@ func addPortFilter(httpClient http.Client, url string, ipv6 string, bearerToken 
 		}
 	}`, ipv6))
 
-	slog.Debug("Creating request")
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return addFilterResponse{}, fmt.Errorf("error creating request: %w", err)
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerToken))
-
-	slog.Debug("Sending request")
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return addFilterResponse{}, fmt.Errorf("error sending request: %w", err)
-	}
-
-	if resp.Body == nil {
-		return addFilterResponse{}, fmt.Errorf("response body is nil")
-	}
-
-	defer resp.Body.Close()
-
-	slog.Debug("Reading response body")
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return addFilterResponse{}, fmt.Errorf("error reading response body: %w", err)
-	}
-
-	slog.Debug("Response body", slog.String("url", url), slog.String("body", string(body)))
-
-	if resp.StatusCode != http.StatusCreated {
-		return addFilterResponse{}, fmt.Errorf("response status is not correct (expected 201): %d", resp.StatusCode)
-	}
-
-	slog.Debug("Unmarshalling response body")
 	addFilterResponse1 := addFilterResponse{}
-	jsonErr := json.Unmarshal(body, &addFilterResponse1)
-	if jsonErr != nil {
-		return addFilterResponse{}, fmt.Errorf("error unmarshalling response body: %w", jsonErr)
+	httpDoErr := httpDo(httpClient, http.MethodPost, url, bearerToken, bytes.NewBuffer(jsonData), http.StatusCreated, &addFilterResponse1)
+	if httpDoErr != nil {
+		return addFilterResponse{}, httpDoErr
 	}
 
 	if addFilterResponse1.Created.ID == nil {
@@ -445,51 +273,19 @@ func addPortFilter(httpClient http.Client, url string, ipv6 string, bearerToken 
 	return addFilterResponse1, nil
 }
 
-func logout(httpClient http.Client, url string, bearerToken string) (int, error) {
-	slog.Debug("Creating request")
-	req, err := http.NewRequest(http.MethodDelete, url, nil)
-	if err != nil {
-		return -1, fmt.Errorf("error creating request: %w", err)
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bearerToken))
-
-	slog.Debug("Sending request")
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return -1, fmt.Errorf("error sending request: %w", err)
-	}
-
-	if resp.Body == nil {
-		return -1, fmt.Errorf("response body is nil")
-	}
-
-	defer resp.Body.Close()
-
-	slog.Debug("Reading response body")
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return -1, fmt.Errorf("error reading response body: %w", err)
-	}
-
-	slog.Debug("Response body", slog.String("url", url), slog.String("body", string(body)))
-
-	if resp.StatusCode != http.StatusNoContent {
-		return -1, fmt.Errorf("response status is not correct (expected 204): %d", resp.StatusCode)
-	}
-
-	return resp.StatusCode, nil
+func logout(httpClient http.Client, url string, bearerToken string) error {
+	return httpDo(httpClient, http.MethodDelete, url, bearerToken, nil, http.StatusNoContent, nil)
 }
 
 func quickLogout(httpClient http.Client, logoutURL string, bearerToken string) {
 	slog.Info("Attempting to logout", slog.String("logoutURL", logoutURL), slog.String("bearerToken", bearerToken))
-	logoutStatusCode, logoutErr := logout(httpClient, logoutURL, bearerToken)
+	logoutErr := logout(httpClient, logoutURL, bearerToken)
 	if logoutErr != nil {
 		slog.Error(logoutErr.Error())
 		slog.Error("virgin-auto-firewall failed to logout, exiting")
 		os.Exit(1)
 	} else {
-		slog.Info("Logged out successfully", slog.Int("logoutStatusCode", logoutStatusCode))
+		slog.Info("Logged out successfully")
 	}
 }
 
@@ -500,7 +296,8 @@ func main() {
 	ipv6URL := flag.String("ipv6URL", "https://api6.ipify.org?format=json", "URL to fetch IPv6 from")
 	routerPassword := flag.String("routerPassword", "", "Router password")
 	sleepTime := flag.Int("sleepTime", 10, "Time to sleep between new IPv6 checks")
-	previousIPv6Flag := flag.String("previousIPv6", "aaaa:bbbb:cccc:dddd:aaaa:bbbb:cccc:dddd", "Previous IPv6 (testing purposes)")
+	httpTimeout := flag.Int("httpTimeout", 20, "HTTP timeout in seconds")
+	oldIPv6Flag := flag.String("oldIP", "aaaa:bbbb:cccc:dddd:aaaa:bbbb:cccc:dddd", "Old IPv6 (your current one, the new one will be fetched)")
 	loginURL := flag.String("loginURL", "http://192.168.0.1/rest/v1/user/login", "URL to login to router")
 	logoutURL := flag.String("logoutURL", "http://192.168.0.1/rest/v1/user/%s/token/%s", "URL to logout of router")
 	devicesURL := flag.String("devicesURL", "http://192.168.0.1/rest/v1/network/hosts?connectedOnly=true", "URL to get connected devices from")
@@ -525,11 +322,11 @@ func main() {
 	slog.Info("virgin-auto-firewall started successfully", slog.String("logPath", *logPath), slog.Bool("debugMode", *debugMode), slog.String("ipv6URL", *ipv6URL), slog.String("routerPassword", *routerPassword), slog.String("loginURL", *loginURL), slog.String("logoutURL", *logoutURL))
 
 	httpClient := http.Client{
-		Timeout: time.Second * 20,
+		Timeout: time.Duration(*httpTimeout) * time.Second,
 	}
 
 	// ? This default IPv6 is made up, it will be overwritten
-	previousIPv6 := *previousIPv6Flag
+	previousIPv6 := *oldIPv6Flag
 
 	// ! Should implement graceful shutdown but it's probably fine
 	for {
