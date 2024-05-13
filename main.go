@@ -282,7 +282,7 @@ func quickLogout(httpClient http.Client, logoutURL string, bearerToken string) {
 	logoutErr := logout(httpClient, logoutURL, bearerToken)
 	if logoutErr != nil {
 		slog.Error(logoutErr.Error())
-		slog.Error("virgin-auto-firewall failed to logout, exiting")
+		slog.Error("virginhub-auto-firewall failed to logout, exiting")
 		os.Exit(1)
 	} else {
 		slog.Info("Logged out successfully")
@@ -307,19 +307,19 @@ func main() {
 	addIPv6FiltersURL := flag.String("addIPv6FiltersURL", "http://192.168.0.1/rest/v1/network/ipv6/ipportfilters", "URL to add IPv6 filters to")
 	flag.Parse()
 
-	slog.Info("Starting virgin-auto-firewall", slog.String("logPath", *logPath), slog.Bool("debugMode", *debugMode), slog.String("ipv6URL", *ipv6URL), slog.String("routerPassword", *routerPassword), slog.String("loginURL", *loginURL), slog.String("logoutURL", *logoutURL))
+	slog.Info("Starting virginhub-auto-firewall", slog.String("logPath", *logPath), slog.Bool("debugMode", *debugMode), slog.String("ipv6URL", *ipv6URL), slog.String("routerPassword", *routerPassword), slog.String("loginURL", *loginURL), slog.String("logoutURL", *logoutURL))
 	slog.Info("Setting up logger", slog.String("logPath", *logPath))
 
 	f1, err := setupLogger(*logPath, *debugMode)
 	if err != nil {
 		slog.Error(err.Error())
-		slog.Error("virgin-auto-firewall failed to start, exiting")
+		slog.Error("virginhub-auto-firewall failed to start, exiting")
 		os.Exit(1)
 	}
 
 	defer f1.Close()
 
-	slog.Info("virgin-auto-firewall started successfully", slog.String("logPath", *logPath), slog.Bool("debugMode", *debugMode), slog.String("ipv6URL", *ipv6URL), slog.String("routerPassword", *routerPassword), slog.String("loginURL", *loginURL), slog.String("logoutURL", *logoutURL))
+	slog.Info("virginhub-auto-firewall started successfully", slog.String("logPath", *logPath), slog.Bool("debugMode", *debugMode), slog.String("ipv6URL", *ipv6URL), slog.String("routerPassword", *routerPassword), slog.String("loginURL", *loginURL), slog.String("logoutURL", *logoutURL))
 
 	httpClient := http.Client{
 		Timeout: time.Duration(*httpTimeout) * time.Second,
@@ -338,7 +338,7 @@ func main() {
 		newIPv6, err := getIPv6(httpClient, *ipv6URL)
 		if err != nil {
 			slog.Error(err.Error())
-			slog.Error("virgin-auto-firewall failed to get IPv6, restarting loop")
+			slog.Error("virginhub-auto-firewall failed to get IPv6, restarting loop")
 			continue
 		}
 
@@ -355,7 +355,7 @@ func main() {
 		userId, bearerToken, loginErr := login(httpClient, *loginURL, *routerPassword)
 		if loginErr != nil {
 			slog.Error(loginErr.Error())
-			slog.Error("virgin-auto-firewall failed to login, restarting loop")
+			slog.Error("virginhub-auto-firewall failed to login, restarting loop")
 			continue
 		}
 
@@ -368,7 +368,7 @@ func main() {
 			devices, devicesErr := getConnectedDevices(httpClient, *devicesURL, bearerToken)
 			if devicesErr != nil {
 				slog.Error(devicesErr.Error())
-				slog.Error("virgin-auto-firewall failed to get connected devices, attempting logout and restarting loop")
+				slog.Error("virginhub-auto-firewall failed to get connected devices, attempting logout and restarting loop")
 				quickLogout(httpClient, fmt.Sprintf(*logoutURL, userId, bearerToken), bearerToken)
 				f1.Close()
 				continue
@@ -389,7 +389,7 @@ func main() {
 
 			if deviceIdx == -1 {
 				slog.Info("IPv6 is not in connected devices", slog.String("IPv6", newIPv6))
-				slog.Info("virgin-auto-firewall attempting logout and restarting loop")
+				slog.Info("virginhub-auto-firewall attempting logout and restarting loop")
 				quickLogout(httpClient, fmt.Sprintf(*logoutURL, userId, bearerToken), bearerToken)
 				f1.Close()
 				continue
@@ -402,7 +402,7 @@ func main() {
 		ipv6Info, ipv6InfoErr := getNetworkIPv6Info(httpClient, *ipv6InfoURL, bearerToken)
 		if ipv6InfoErr != nil {
 			slog.Error(ipv6InfoErr.Error())
-			slog.Error("virgin-auto-firewall failed to get IPv6 info, attempting logout and restarting loop")
+			slog.Error("virginhub-auto-firewall failed to get IPv6 info, attempting logout and restarting loop")
 			quickLogout(httpClient, fmt.Sprintf(*logoutURL, userId, bearerToken), bearerToken)
 			f1.Close()
 			continue
@@ -416,7 +416,7 @@ func main() {
 		// ? Remove trailing colon from network prefix e.g. 1325:8084:3a23:fe80::
 		if !strings.Contains(newIPv6, strings.TrimSuffix(*ipv6Info.Info.LanNetworkPrefixAddress, ":")) {
 			slog.Error("IPv6 does not contain network prefix", slog.String("IPv6", newIPv6), slog.String("lanNetworkPrefixAddress", *ipv6Info.Info.LanNetworkPrefixAddress))
-			slog.Error("virgin-auto-firewall attempting logout and restarting loop")
+			slog.Error("virginhub-auto-firewall attempting logout and restarting loop")
 			quickLogout(httpClient, fmt.Sprintf(*logoutURL, userId, bearerToken), bearerToken)
 			f1.Close()
 			continue
@@ -428,7 +428,7 @@ func main() {
 		filters, filtersErr := getPortFilters(httpClient, *portFiltersURL, bearerToken)
 		if filtersErr != nil {
 			slog.Error(filtersErr.Error())
-			slog.Error("virgin-auto-firewall failed to get port filters, attempting logout and restarting loop")
+			slog.Error("virginhub-auto-firewall failed to get port filters, attempting logout and restarting loop")
 			quickLogout(httpClient, fmt.Sprintf(*logoutURL, userId, bearerToken), bearerToken)
 			f1.Close()
 			continue
@@ -452,7 +452,7 @@ func main() {
 			deleteErr := deletePortFilter(httpClient, fmt.Sprintf(*deleteIPv6FiltersURL, (*filters.Ipportfilters.Ipv6.Rules)[previousIPv6FilterIdx].ID), bearerToken)
 			if deleteErr != nil {
 				slog.Error(deleteErr.Error())
-				slog.Error("virgin-auto-firewall failed to delete filter for the previous IPv6, attempting logout and restarting loop")
+				slog.Error("virginhub-auto-firewall failed to delete filter for the previous IPv6, attempting logout and restarting loop")
 				quickLogout(httpClient, fmt.Sprintf(*logoutURL, userId, bearerToken), bearerToken)
 				f1.Close()
 				continue
@@ -474,7 +474,7 @@ func main() {
 
 		if newIPv6FilterIdx != -1 {
 			slog.Info("There is an existing filter for the new IPv6", slog.Int("newIPv6FilterIdx", newIPv6FilterIdx), slog.String("newIPv6", newIPv6), slog.String("destinationStartAddress", (*filters.Ipportfilters.Ipv6.Rules)[newIPv6FilterIdx].Filter.DestinationStartAddress), slog.String("protocol", (*filters.Ipportfilters.Ipv6.Rules)[newIPv6FilterIdx].Filter.Protocol), slog.String("direction", (*filters.Ipportfilters.Ipv6.Rules)[newIPv6FilterIdx].Filter.Direction))
-			slog.Info("virgin-auto-firewall attempting logout and restarting loop")
+			slog.Info("virginhub-auto-firewall attempting logout and restarting loop")
 			previousIPv6 = newIPv6
 			quickLogout(httpClient, fmt.Sprintf(*logoutURL, userId, bearerToken), bearerToken)
 			f1.Close()
@@ -486,7 +486,7 @@ func main() {
 		addFilterResponse1, addFilterErr := addPortFilter(httpClient, *addIPv6FiltersURL, newIPv6, bearerToken)
 		if addFilterErr != nil {
 			slog.Error(addFilterErr.Error())
-			slog.Error("virgin-auto-firewall failed to create filter for the new IPv6, attempting logout and restarting loop")
+			slog.Error("virginhub-auto-firewall failed to create filter for the new IPv6, attempting logout and restarting loop")
 			quickLogout(httpClient, fmt.Sprintf(*logoutURL, userId, bearerToken), bearerToken)
 			f1.Close()
 			continue

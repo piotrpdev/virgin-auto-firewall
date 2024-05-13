@@ -1,4 +1,4 @@
-# Virgin Auto Firewall
+# VirginHub Auto Firewall
 
 ```mermaid
 sequenceDiagram
@@ -16,7 +16,7 @@ sequenceDiagram
     DNS -->>ExternalDevice: Provides device's global IPv6 address
     Note over HomeDevice: IPv6 Address Changes
     ExternalDevice--xHomeDevice: Access attempt fails
-    alt Virgin Auto Firewall
+    alt VirginHub Auto Firewall
     loop
     HomeDevice->>+IPCheckService: Asks for global IPv6 address
     IPCheckService-->>-HomeDevice: Provides global IPv6 address
@@ -32,7 +32,7 @@ sequenceDiagram
 
 ```
 
-I'm using the Virgin Media Hub 6 router (`F3896LG-VMIE`) which, *at least in my area*,
+I'm using the VirginHub Media Hub 6 router (`F3896LG-VMIE`) which, *at least in my area*,
 doesn't allow IPv4 port forwarding. It *does* however allow setting IPv6 firewall
 rules, which means that you can still expose services on your home network to the internet.
 
@@ -43,7 +43,7 @@ that want to host services on their home network. I use this in conjunction
 with the [NO-IP DUC](https://www.noip.com/support/knowledgebase/automatic-ipv6-updates-linux-duc) to expose my Raspberry Pi 4B to the internet.
 
 > [!WARNING]
-> This software was specifically designed and only works with the Virgin
+> This software was specifically designed and only works with the VirginHub
 > Media Hub 6 router (`F3896LG-VMIE` by *Sagemcom*).
 
 ## Usage
@@ -54,7 +54,7 @@ I recommend the following:
 sudo docker run -d \
 -v /var/log:/tmp \
 --net=host \
-piotrpdev/virgin-auto-firewall:1.0.0-rspi \
+piotrpdev/virginhub-auto-firewall:1.0.0-rspi \
 -logPath=/tmp/vaf.log \
 -routerPassword=abcde \
 -debug=true \
